@@ -12,8 +12,10 @@
     { href: '/', label: '建设总览', icon: '总' },
     { href: '/courses', label: '课程与单元', icon: '课' },
     { href: '/matrix', label: '映射图谱', icon: '图' },
+    { href: '/merge', label: '离线合并', icon: '并' },
     { href: '/review', label: '改革审阅', icon: '审' },
   ]
+  const roles = ['课程负责人', '院系审阅人'] as const
 </script>
 
 <svelte:head><title>{page.data?.title ?? '课程改革审阅平台'}</title></svelte:head>
@@ -27,7 +29,18 @@
           <a href={item.href} class:active={page.url.pathname === item.href} onclick={() => mobileOpen = false}><span>{item.icon}</span>{item.label}</a>
         {/each}
       </nav>
-      <div class="side-note"><strong>{$curriculumStore.locked ? '版本已锁定' : '草稿自动保存'}</strong><span>当前版本 {$curriculumStore.revision}</span></div>
+      <div class="side-note">
+        <strong>{$curriculumStore.locked ? '版本已锁定' : '草稿自动保存'}</strong>
+        <span>当前版本 {$curriculumStore.revision}</span>
+        <span class:offline={!$curriculumStore.online}>{$curriculumStore.online ? '网络在线' : '离线中，修改暂存本地'}</span>
+      </div>
+      <div class="role-switch">
+        <label for="role-select">当前身份</label>
+        <select id="role-select" value={$curriculumStore.actor.role} onchange={(event) => curriculumStore.setRole(event.currentTarget.value as (typeof roles)[number])}>
+          {#each roles as role}<option value={role}>{role}</option>{/each}
+        </select>
+        <small>{$curriculumStore.actor.role === '课程负责人' ? '可离线整理草稿、提交修订' : '可裁决分歧、附议或退回修订'}</small>
+      </div>
     </aside>
     <main>
       <header class="mobile-header"><button onclick={() => mobileOpen = !mobileOpen}>菜单</button><strong>{page.data?.title ?? '课程标准映射'}</strong></header>
@@ -48,9 +61,14 @@
   nav a { display: flex; align-items: center; gap: 10px; padding: 11px 12px; border-radius: 7px; color: #bed0d2; text-decoration: none; font-size: 13px; }
   nav a.active { color: white; background: #365e64; box-shadow: inset 3px 0 #74bcb4; }
   nav a span { display: grid; width: 24px; height: 24px; place-items: center; border: 1px solid rgba(255,255,255,.2); border-radius: 5px; font-size: 11px; }
-  .side-note { margin: auto 12px 14px; padding: 12px; border: 1px solid rgba(255,255,255,.1); border-radius: 8px; background: rgba(255,255,255,.04); }
+  .side-note { margin: auto 12px 8px; padding: 12px; border: 1px solid rgba(255,255,255,.1); border-radius: 8px; background: rgba(255,255,255,.04); }
   .side-note strong, .side-note span { display: block; font-size: 11px; }
   .side-note span { margin-top: 5px; color: #9eb2b5; }
+  .side-note span.offline { color: #f0b49a; }
+  .role-switch { margin: 0 12px 14px; padding: 12px; border: 1px solid rgba(255,255,255,.1); border-radius: 8px; background: rgba(255,255,255,.04); }
+  .role-switch label { display: block; margin-bottom: 6px; color: #b9cbcd; font-size: 10px; font-weight: 700; }
+  .role-switch select { padding: 7px 8px; border: 1px solid #4b6f75; border-radius: 6px; color: #e8f0f1; background: #1e3d44; font-size: 12px; }
+  .role-switch small { display: block; margin-top: 6px; color: #8fa6a9; font-size: 10px; }
   main { min-width: 0; margin-left: 242px; }
   .mobile-header { display: none; }
   @media (max-width: 800px) {

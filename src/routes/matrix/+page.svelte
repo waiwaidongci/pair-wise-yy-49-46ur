@@ -11,6 +11,7 @@
   let weight = $state(1)
   let query = $state('')
   const issues = $derived(validateCurriculum($curriculumStore))
+  const pendingDivergences = $derived($curriculumStore.divergences.filter((item) => item.status === '待审阅').length)
   const visibleIds = $derived(new Set($curriculumStore.nodes.filter((node) => !query || node.label.includes(query) || node.id.includes(query)).map((node) => node.id)))
   const selected = $derived($curriculumStore.nodes.find((item) => item.id === selectedNode))
 
@@ -52,7 +53,15 @@
 <section class="page">
   <div class="page-head">
     <div><p class="eyebrow">CURRICULUM MAP / 映射图谱</p><h1>有向关系与覆盖矩阵</h1><p class="muted">拖动节点重新布局；连边关系持久保存，覆盖缺口会立即高亮。</p></div>
-    <div class="actions"><button class="btn-secondary" onclick={exportMap}>导出课程地图</button><button class="btn-primary" onclick={() => $curriculumStore.lock(`R${Number($curriculumStore.revision.slice(1)) + 1}`)}>锁定当前版本</button></div>
+    <div class="actions">
+      {#if pendingDivergences > 0}<a class="btn-secondary divergence-link" href="/merge">{pendingDivergences} 条待审阅分歧</a>{/if}
+      <button class="btn-secondary" onclick={exportMap}>导出课程地图</button>
+      {#if $curriculumStore.locked}
+        <button class="btn-primary" onclick={() => curriculumStore.unlockNextRevision()}>开启新一轮修订</button>
+      {:else}
+        <button class="btn-primary" onclick={() => curriculumStore.lockVersion()}>锁定当前版本</button>
+      {/if}
+    </div>
   </div>
 
   <div class="matrix-toolbar panel">
@@ -62,8 +71,8 @@
     <select bind:value={target}>{#each $curriculumStore.nodes as node}<option value={node.id}>{node.id} · {node.label.split('\n')[0]}</option>{/each}</select>
     <select bind:value={relation}><option>支撑</option><option>前置</option><option>教学</option><option>考核</option></select>
     <input bind:value={weight} type="number" min="0" max="1" step="0.1" />
-    <button class="btn-primary" onclick={addMapping}>新增连边</button>
-    <span class="muted">{issues.length} 项校验提示</span>
+    <button class="btn-primary" disabled={$curriculumStore.locked} onclick={addMapping}>新增连边</button>
+    <span class="muted">{issues.length} 项校验提示{$curriculumStore.locked ? ' · 版本已锁定，映射只读' : ''}</span>
   </div>
 
   <div class="matrix-layout">
@@ -124,7 +133,9 @@
 </section>
 
 <style>
-  .actions { display: flex; gap: 8px; }
+  .actions { display: flex; align-items: center; gap: 8px; }
+  .actions a { text-decoration: none; }
+  .divergence-link { border-color: #cd813a; color: #9b5a25; background: #fff6e9; }
   .matrix-toolbar { display: flex; align-items: center; gap: 9px; flex-wrap: wrap; margin-bottom: 12px; padding: 12px; }
   .matrix-toolbar > input:first-child { max-width: 220px; }
   .matrix-toolbar select { max-width: 230px; }

@@ -6,6 +6,7 @@ export const revisionSchema = z.object({
   evidence: z.string().min(12, '证据说明至少需要 12 个字符'),
   revisionNote: z.string().min(8, '修订说明至少需要 8 个字符'),
   submitter: z.string().min(2, '请填写提交人'),
+  baseRevision: z.string().min(1, '缺少基准版本'),
 })
 
 export const mappingSchema = z.object({

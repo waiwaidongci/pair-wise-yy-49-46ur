@@ -15,6 +15,7 @@
   }))
   const issues = $derived(validateCurriculum($curriculumStore))
   const reviewOpen = $derived($curriculumStore.reviewItems.filter((item) => item.status === '待审阅').length)
+  const divergenceOpen = $derived($curriculumStore.divergences.filter((item) => item.status === '待审阅').length)
   const covered = $derived($curriculumStore.nodes.filter((node) => node.type === '毕业要求' && $curriculumStore.mappings.some((mapping) => mapping.source === node.id)).length)
 </script>
 
@@ -30,7 +31,7 @@
     <article class="metric"><span>培养目标</span><strong>{$curriculumStore.nodes.filter((node) => node.type === '目标').length}</strong><small>2 条毕业要求主链</small></article>
     <article class="metric"><span>毕业要求覆盖</span><strong>{covered}/{$curriculumStore.nodes.filter((node) => node.type === '毕业要求').length}</strong><small>{issues.filter((issue) => issue.severity === '错误').length} 个阻断缺口</small></article>
     <article class="metric"><span>课程映射</span><strong>{$curriculumStore.mappings.length}</strong><small>含前置、教学与考核</small></article>
-    <article class="metric"><span>待审阅提交</span><strong style="color:#b45c34">{reviewOpen}</strong><small>院系审阅队列</small></article>
+    <article class="metric"><span>待审阅提交</span><strong style="color:#b45c34">{reviewOpen}</strong><small>{divergenceOpen > 0 ? `${divergenceOpen} 条映射分歧待裁决` : '院系审阅队列'}</small></article>
   </div>
 
   <div class="overview-grid">
