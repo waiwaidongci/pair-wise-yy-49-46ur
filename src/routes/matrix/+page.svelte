@@ -1,7 +1,9 @@
 <script lang="ts">
+  import { useQueryClient } from '@tanstack/svelte-query'
   import { curriculumStore, validateCurriculum } from '$lib/stores'
   import type { Mapping } from '$lib/seed'
 
+  const queryClient = useQueryClient()
   let dragging = $state<string | null>(null)
   let offset = $state({ x: 0, y: 0 })
   let selectedNode = $state('C-308')
@@ -11,8 +13,14 @@
   let weight = $state(1)
   let query = $state('')
   const issues = $derived(validateCurriculum($curriculumStore))
+  const gapIssues = $derived(issues.filter((issue) => issue.severity === '错误'))
   const visibleIds = $derived(new Set($curriculumStore.nodes.filter((node) => !query || node.label.includes(query) || node.id.includes(query)).map((node) => node.id)))
   const selected = $derived($curriculumStore.nodes.find((item) => item.id === selectedNode))
+
+  async function lockRevision() {
+    await fetch('/api/curriculum/lock', { method: 'POST' })
+    await queryClient.invalidateQueries({ queryKey: ['curriculum'] })
+  }
 
   function startDrag(event: MouseEvent, id: string) {
     const node = $curriculumStore.nodes.find((item) => item.id === id)
@@ -52,7 +60,7 @@
 <section class="page">
   <div class="page-head">
     <div><p class="eyebrow">CURRICULUM MAP / 映射图谱</p><h1>有向关系与覆盖矩阵</h1><p class="muted">拖动节点重新布局；连边关系持久保存，覆盖缺口会立即高亮。</p></div>
-    <div class="actions"><button class="btn-secondary" onclick={exportMap}>导出课程地图</button><button class="btn-primary" onclick={() => $curriculumStore.lock(`R${Number($curriculumStore.revision.slice(1)) + 1}`)}>锁定当前版本</button></div>
+    <div class="actions"><button class="btn-secondary" onclick={exportMap}>导出课程地图</button><button class="btn-primary" onclick={lockRevision}>锁定当前版本</button></div>
   </div>
 
   <div class="matrix-toolbar panel">
@@ -114,6 +122,14 @@
         {/each}
       </div>
       <div class="legend"><span><i class="covered-dot"></i>已有映射</span><span><i class="gap-dot"></i>覆盖缺口</span></div>
+      {#if gapIssues.length > 0}
+        <div class="gap-hints">
+          <h4>缺口提示</h4>
+          {#each gapIssues as issue}
+            <div><strong>{issue.title}</strong><p>{issue.detail}</p></div>
+          {/each}
+        </div>
+      {/if}
       <div class="node-detail">
         {#if selected}
           <strong>{selected.label.split('\n')[0]}</strong><p>{selected.id} · {selected.type}</p><button class="btn-secondary">编辑节点信息</button>
@@ -152,6 +168,11 @@
   .legend i { display: inline-block; width: 8px; height: 8px; margin-right: 4px; border-radius: 50%; }
   .covered-dot { background: #3f8c6b; }
   .gap-dot { background: #c14932; }
+  .gap-hints { margin: 0 14px 14px; padding: 12px; border-left: 3px solid #c14932; background: #fdf3f0; }
+  .gap-hints h4 { margin: 0 0 8px; color: #a54431; font-size: 12px; }
+  .gap-hints > div { padding: 7px 0; border-top: 1px solid #f0d9d2; }
+  .gap-hints strong { color: #913c2b; font-size: 12px; }
+  .gap-hints p { margin: 4px 0 0; color: #7a6a66; font-size: 11px; line-height: 1.5; }
   .node-detail { margin: 0 14px 14px; padding: 13px; border-left: 3px solid #377c7b; background: #f3f7f6; }
   .node-detail strong { display: block; }
   .node-detail p { margin: 5px 0 10px; color: #748188; font-size: 11px; }

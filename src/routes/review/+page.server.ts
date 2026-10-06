@@ -1,6 +1,6 @@
 import { fail } from '@sveltejs/kit'
 import { revisionSchema } from '$lib/schema'
-import { reviewItems } from '$lib/seed'
+import { submitRevision } from '$lib/server/department'
 
 export const actions = {
   submitRevision: async ({ request }) => {
@@ -15,16 +15,7 @@ export const actions = {
     if (!parsed.success) {
       return fail(400, { errors: parsed.error.flatten().fieldErrors, values: Object.fromEntries(form) })
     }
-    const item = {
-      id: `REV-${Date.now().toString().slice(-4)}`,
-      courseId: parsed.data.courseId,
-      requirementId: parsed.data.requirementId,
-      evidence: `${parsed.data.evidence} 修订说明：${parsed.data.revisionNote}`,
-      submitter: parsed.data.submitter,
-      status: '待审阅' as const,
-      comment: '',
-    }
-    reviewItems.unshift(item)
+    const item = submitRevision(parsed.data)
     return { success: true, item }
   },
 }

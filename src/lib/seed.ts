@@ -1,3 +1,5 @@
+export type Role = '课程负责人' | '院系审阅人'
+
 export type GraphNode = {
   id: string
   label: string
@@ -23,6 +25,54 @@ export type ReviewItem = {
   submitter: string
   status: '待审阅' | '已附议' | '已退回'
   comment: string
+  revisionId: string
+}
+
+export type OfflineDraft = {
+  id: string
+  owner: string
+  courseGroup: string
+  baseRevision: string
+  changes: Mapping[]
+  note: string
+  status: '离线' | '合并失败' | '已合并'
+  idempotencyKey: string
+  error?: string
+  updatedAt: string
+}
+
+export type Divergence = {
+  id: string
+  pairKey: string
+  source: string
+  target: string
+  relation: Mapping['relation']
+  departmentMapping: Mapping
+  draftMapping: Mapping
+  draftId: string
+  status: '待审阅' | '已保留草稿' | '已保留院系版'
+  decidedBy?: string
+  decidedAt?: string
+}
+
+export type EvidenceRecord = {
+  revision: string
+  courseId: string
+  requirementId: string
+  evidence: string
+  status: string
+  decidedAt?: string
+}
+
+export type MergeRecord = {
+  id: string
+  draftId: string
+  courseGroup: string
+  baseRevision: string
+  mergedCount: number
+  divergenceIds: string[]
+  status: '已合并' | '待审阅分歧'
+  createdAt: string
 }
 
 export const nodes: GraphNode[] = [
@@ -55,9 +105,58 @@ export const mappings: Mapping[] = [
 ]
 
 export const reviewItems: ReviewItem[] = [
-  { id: 'REV-201', courseId: 'C-308', requirementId: 'GR-03', evidence: '需求追踪矩阵、迭代评审记录、测试覆盖报告与教师评价量表。', submitter: '软件工程课程组', status: '待审阅', comment: '' },
-  { id: 'REV-202', courseId: 'C-308', requirementId: 'GR-06', evidence: '增加数据合规案例分析，但尚未提供评分记录。', submitter: '软件工程课程组', status: '待审阅', comment: '' },
-  { id: 'REV-203', courseId: 'C-205', requirementId: 'GR-01', evidence: '图算法实践已覆盖复杂工程问题建模，作业与测验记录完整。', submitter: '数据结构课程组', status: '已附议', comment: '覆盖证据充分，建议保留。' },
+  { id: 'REV-201', courseId: 'C-308', requirementId: 'GR-03', evidence: '需求追踪矩阵、迭代评审记录、测试覆盖报告与教师评价量表。', submitter: '软件工程课程组', status: '待审阅', comment: '', revisionId: 'R12' },
+  { id: 'REV-202', courseId: 'C-308', requirementId: 'GR-06', evidence: '增加数据合规案例分析，但尚未提供评分记录。', submitter: '软件工程课程组', status: '待审阅', comment: '', revisionId: 'R12' },
+  { id: 'REV-203', courseId: 'C-205', requirementId: 'GR-01', evidence: '图算法实践已覆盖复杂工程问题建模，作业与测验记录完整。', submitter: '数据结构课程组', status: '已附议', comment: '覆盖证据充分，建议保留。', revisionId: 'R11' },
 ]
 
-export const seedState = { nodes, mappings, reviewItems, revision: 'R12', locked: false }
+/** 课程负责人离线整理的草稿：网络恢复后合并入院系版本。 */
+export const offlineDrafts: OfflineDraft[] = [
+  {
+    id: 'DRAFT-01',
+    owner: '顾明',
+    courseGroup: '软件工程课程组',
+    baseRevision: 'R12',
+    changes: [
+      { id: 'M-D01', source: 'GR-06', target: 'C-308', relation: '支撑', weight: 0.85 },
+      { id: 'M-D02', source: 'OBJ-02', target: 'GR-06', relation: '支撑', weight: 0.8 },
+    ],
+    note: '离线整理：补充 GR-06 数据合规案例证据，权重由 0.70 上调至 0.85；新增 OBJ-02→GR-06 支撑链。',
+    status: '离线',
+    idempotencyKey: 'idem-DRAFT-01',
+    updatedAt: '2026-10-05T21:10:00+08:00',
+  },
+  {
+    id: 'DRAFT-02',
+    owner: '李薇',
+    courseGroup: '数据结构课程组',
+    baseRevision: 'R12',
+    changes: [
+      { id: 'M-D03', source: 'GR-03', target: 'C-205', relation: '支撑', weight: 0.9 },
+    ],
+    note: '离线整理：C-205 复杂工程问题建模证据补充，权重由 0.80 上调至 0.90。',
+    status: '离线',
+    idempotencyKey: 'idem-DRAFT-02',
+    updatedAt: '2026-10-05T21:24:00+08:00',
+  },
+]
+
+/** 已锁定版本的考核证据：版本锁定后照旧可查。 */
+export const evidenceRecords: EvidenceRecord[] = [
+  { revision: 'R11', courseId: 'C-205', requirementId: 'GR-01', evidence: '图算法实践已覆盖复杂工程问题建模，作业与测验记录完整。', status: '已附议', decidedAt: '2026-09-20T10:00:00+08:00' },
+  { revision: 'R11', courseId: 'C-308', requirementId: 'GR-03', evidence: '需求追踪矩阵、迭代评审记录（R11 锁定版留存）。', status: '已锁定', decidedAt: '2026-09-20T10:00:00+08:00' },
+]
+
+export const divergences: Divergence[] = []
+export const mergeRecords: MergeRecord[] = []
+
+export const seedState = {
+  nodes,
+  mappings,
+  reviewItems,
+  divergences,
+  evidence: evidenceRecords,
+  mergeRecords,
+  revision: 'R12',
+  locked: false,
+}

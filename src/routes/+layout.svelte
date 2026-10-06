@@ -1,7 +1,9 @@
 <script lang="ts">
   import { page } from '$app/state'
-  import { QueryClient, QueryClientProvider } from '@tanstack/svelte-query'
+  import { browser } from '$app/environment'
+  import { QueryClient, QueryClientProvider, createQuery } from '@tanstack/svelte-query'
   import { curriculumStore } from '$lib/stores'
+  import type { Role } from '$lib/seed'
   import '../app.css'
   const queryClient = new QueryClient({
     defaultOptions: { queries: { staleTime: 30_000, retry: 1 } },
@@ -14,6 +16,19 @@
     { href: '/matrix', label: '映射图谱', icon: '图' },
     { href: '/review', label: '改革审阅', icon: '审' },
   ]
+
+  // 布局位于 QueryClientProvider 之上，需显式传入 queryClient；SSR 下跳过拉取，挂载后同步院系版本。
+  const departmentQuery = createQuery(() => ({
+    queryKey: ['curriculum'],
+    enabled: browser,
+    queryFn: async () => (await fetch('/api/curriculum')).json(),
+  }), () => queryClient)
+
+  $effect(() => {
+    if (departmentQuery.data) curriculumStore.syncDepartment(departmentQuery.data)
+  })
+
+  const roles: Role[] = ['课程负责人', '院系审阅人']
 </script>
 
 <svelte:head><title>{page.data?.title ?? '课程改革审阅平台'}</title></svelte:head>
@@ -27,6 +42,14 @@
           <a href={item.href} class:active={page.url.pathname === item.href} onclick={() => mobileOpen = false}><span>{item.icon}</span>{item.label}</a>
         {/each}
       </nav>
+      <div class="role-switch">
+        <span class="role-label">当前身份</span>
+        <div class="role-options">
+          {#each roles as role}
+            <button class:active={$curriculumStore.role === role} onclick={() => curriculumStore.setRole(role)}>{role}</button>
+          {/each}
+        </div>
+      </div>
       <div class="side-note"><strong>{$curriculumStore.locked ? '版本已锁定' : '草稿自动保存'}</strong><span>当前版本 {$curriculumStore.revision}</span></div>
     </aside>
     <main>
@@ -48,6 +71,11 @@
   nav a { display: flex; align-items: center; gap: 10px; padding: 11px 12px; border-radius: 7px; color: #bed0d2; text-decoration: none; font-size: 13px; }
   nav a.active { color: white; background: #365e64; box-shadow: inset 3px 0 #74bcb4; }
   nav a span { display: grid; width: 24px; height: 24px; place-items: center; border: 1px solid rgba(255,255,255,.2); border-radius: 5px; font-size: 11px; }
+  .role-switch { margin: 4px 12px 10px; padding: 10px; border: 1px solid rgba(255,255,255,.1); border-radius: 8px; background: rgba(255,255,255,.04); }
+  .role-label { display: block; margin-bottom: 7px; color: #9eb2b5; font-size: 10px; }
+  .role-options { display: grid; gap: 6px; }
+  .role-options button { padding: 7px 8px; border: 1px solid rgba(255,255,255,.18); border-radius: 6px; color: #cddbdd; background: transparent; font-size: 11px; cursor: pointer; }
+  .role-options button.active { color: #264a52; background: #b5e1dc; font-weight: 700; }
   .side-note { margin: auto 12px 14px; padding: 12px; border: 1px solid rgba(255,255,255,.1); border-radius: 8px; background: rgba(255,255,255,.04); }
   .side-note strong, .side-note span { display: block; font-size: 11px; }
   .side-note span { margin-top: 5px; color: #9eb2b5; }
